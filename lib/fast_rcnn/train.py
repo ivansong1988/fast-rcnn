@@ -100,15 +100,18 @@ class SolverWrapper(object):
         if last_snapshot_iter != self.solver.iter:
             self.snapshot()
 
-def get_training_roidb(imdb):
+def get_training_roidb(imdb): #imdb: pascal_voc类对象
     """Returns a roidb (Region of Interest database) for use in training."""
     if cfg.TRAIN.USE_FLIPPED:
         print 'Appending horizontally-flipped training examples...'
-        imdb.append_flipped_images()
+        imdb.append_flipped_images() #如果被调用, 会执行imdb.roidb_handler()完成数据准备
         print 'done'
 
     print 'Preparing training data...'
-    rdl_roidb.prepare_roidb(imdb)
+    #lib/roi_data_layer/roidb.py
+    #即使append_flipped_images()函数不被执行, 也会在prepare_roidb()函数中通过
+    # roidb = imdb.roidb操作实际调用imdb.roidb_handler()完成加载(见lmdb::roidb()实现)
+    rdl_roidb.prepare_roidb(imdb) 
     print 'done'
 
     return imdb.roidb

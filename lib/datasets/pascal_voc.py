@@ -121,7 +121,7 @@ class pascal_voc(datasets.imdb):
             return roidb
 
         if int(self._year) == 2007 or self._image_set != 'test':
-            gt_roidb = self.gt_roidb()
+            gt_roidb = self.gt_roidb() #
             ss_roidb = self._load_selective_search_roidb(gt_roidb)
             roidb = datasets.imdb.merge_roidbs(gt_roidb, ss_roidb)
         else:
@@ -188,7 +188,7 @@ class pascal_voc(datasets.imdb):
 
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
-    def _load_pascal_annotation(self, index):
+    def _load_pascal_annotation(self, index): #读取xml文件
         """
         Load image and bounding boxes info from XML file in the PASCAL VOC
         format.
@@ -199,9 +199,9 @@ class pascal_voc(datasets.imdb):
             return node.getElementsByTagName(tag)[0].childNodes[0].data
 
         with open(filename) as f:
-            data = minidom.parseString(f.read())
+            data = minidom.parseString(f.read()) #xml文件内容读取
 
-        objs = data.getElementsByTagName('object')
+        objs = data.getElementsByTagName('object') #1 object-> 1 target
         num_objs = len(objs)
 
         boxes = np.zeros((num_objs, 4), dtype=np.uint16)
@@ -209,9 +209,11 @@ class pascal_voc(datasets.imdb):
         overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
 
         # Load object bounding boxes into a data frame.
-        for ix, obj in enumerate(objs):
+        # 这里的处理也要考虑, 万一标注样本已经从零开始了呢,
+        # 所以在准备标注样本时要注意不要越界
+        for ix, obj in enumerate(objs): #枚举的用法, 以后不要再傻傻的用count=0计数了
             # Make pixel indexes 0-based
-            x1 = float(get_data_from_tag(obj, 'xmin')) - 1
+            x1 = float(get_data_from_tag(obj, 'xmin')) - 1 
             y1 = float(get_data_from_tag(obj, 'ymin')) - 1
             x2 = float(get_data_from_tag(obj, 'xmax')) - 1
             y2 = float(get_data_from_tag(obj, 'ymax')) - 1
