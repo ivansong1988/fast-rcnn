@@ -103,8 +103,8 @@ class pascal_voc(datasets.imdb):
         print 'wrote gt roidb to {}'.format(cache_file)
 
         return gt_roidb
-
-    def selective_search_roidb(self):
+    
+    def selective_search_roidb(self): #加载GT数据以及proposal的主要入口函数
         """
         Return the database of selective search regions of interest.
         Ground-truth ROIs are also included.
@@ -221,14 +221,14 @@ class pascal_voc(datasets.imdb):
                     str(get_data_from_tag(obj, "name")).lower().strip()]
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
-            overlaps[ix, cls] = 1.0
+            overlaps[ix, cls] = 1.0 #标记gt属于哪个类别
 
-        overlaps = scipy.sparse.csr_matrix(overlaps)
+        overlaps = scipy.sparse.csr_matrix(overlaps) #转化为稀疏矩阵减小存储消耗
 
-        return {'boxes' : boxes,
-                'gt_classes': gt_classes,
+        return {'boxes' : boxes,  #xmin, ymin, xmax, ymax
+                'gt_classes': gt_classes,#标号, 0...,class-1
                 'gt_overlaps' : overlaps,
-                'flipped' : False}
+                'flipped' : False} #返回字典
 
     def _write_voc_results_file(self, all_boxes):
         use_salt = self.config['use_salt']
