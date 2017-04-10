@@ -27,7 +27,10 @@ class RoIDataLayer(caffe.Layer):
 
     def _get_next_minibatch_inds(self):
         """Return the roidb indices for the next minibatch."""
-        if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb):
+        
+        # lib/fast_rcnn/config.py
+        # __C.TRAIN.IMS_PER_BATCH = 2, 每个batch中2幅图像
+        if self._cur + cfg.TRAIN.IMS_PER_BATCH >= len(self._roidb): # 下一个epoch, 数据shuffle
             self._shuffle_roidb_inds()
 
         db_inds = self._perm[self._cur:self._cur + cfg.TRAIN.IMS_PER_BATCH]
@@ -88,7 +91,7 @@ class RoIDataLayer(caffe.Layer):
         top[1].reshape(1, 5)
 
         # labels blob: R categorical labels in [0, ..., K] for K foreground
-        # classes plus background
+        # classes plus background #label是num_class + 1
         top[2].reshape(1)
 
         if cfg.TRAIN.BBOX_REG:
@@ -100,7 +103,7 @@ class RoIDataLayer(caffe.Layer):
             top[3].reshape(1, self._num_classes * 4)
 
             # bbox_loss_weights blob: At most 4 targets per roi are active;
-            # thisbinary vector sepcifies the subset of active targets
+            # this binary vector sepcifies the subset of active targets
             top[4].reshape(1, self._num_classes * 4)
 
     def forward(self, bottom, top):
@@ -122,6 +125,7 @@ class RoIDataLayer(caffe.Layer):
         """Reshaping happens during the call to forward."""
         pass
 
+#python实现, 并没有使用
 class BlobFetcher(Process):
     """Experimental class for prefetching blobs in a separate process."""
     def __init__(self, queue, roidb, num_classes):

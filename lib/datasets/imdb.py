@@ -157,36 +157,36 @@ class imdb(object):
         for i in xrange(self.num_images):
             boxes = box_list[i]
             num_boxes = boxes.shape[0]
-            overlaps = np.zeros((num_boxes, self.num_classes), dtype=np.float32)
+            overlaps = np.zeros((num_boxes, self.num_classes), dtype=np.float32) #将proposal与class绑定
 
             if gt_roidb is not None:
                 gt_boxes = gt_roidb[i]['boxes']
                 gt_classes = gt_roidb[i]['gt_classes']
                 gt_overlaps = bbox_overlaps(boxes.astype(np.float),
-                                            gt_boxes.astype(np.float))
-                argmaxes = gt_overlaps.argmax(axis=1)
-                maxes = gt_overlaps.max(axis=1)
+                                            gt_boxes.astype(np.float))#计算重叠率 (N,K)矩阵
+                argmaxes = gt_overlaps.argmax(axis=1) #返回索引, along the axis， 因此0-沿h方向, 1-沿w方向, 因此对每个proposal, 计算与之重叠率最大的那个gt bbox
+                maxes = gt_overlaps.max(axis=1) #返回value, 同上
                 I = np.where(maxes > 0)[0]
-                overlaps[I, gt_classes[argmaxes[I]]] = maxes[I]
+                overlaps[I, gt_classes[argmaxes[I]]] = maxes[I] #将proposal bbox与类别绑定, 记录其重叠率
 
             overlaps = scipy.sparse.csr_matrix(overlaps)
             roidb.append({'boxes' : boxes,
                           'gt_classes' : np.zeros((num_boxes,),
                                                   dtype=np.int32),
                           'gt_overlaps' : overlaps,
-                          'flipped' : False})
+                          'flipped' : False})#返回字典
         return roidb
 
     @staticmethod
-    def merge_roidbs(a, b):
+    def merge_roidbs(a, b):#字典列表, 每一项项对应一幅图像
         assert len(a) == len(b)
         for i in xrange(len(a)):
-            a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))
+            a[i]['boxes'] = np.vstack((a[i]['boxes'], b[i]['boxes']))#垂直方向stack
             a[i]['gt_classes'] = np.hstack((a[i]['gt_classes'],
                                             b[i]['gt_classes']))
             a[i]['gt_overlaps'] = scipy.sparse.vstack([a[i]['gt_overlaps'],
                                                        b[i]['gt_overlaps']])
-        return a
+        return a #每一项分别记录了该图像中GT与Proposal的信息
 
     def competition_mode(self, on):
         """Turn competition mode on or off."""

@@ -13,16 +13,21 @@ import cv2
 from fast_rcnn.config import cfg
 from utils.blob import prep_im_for_blob, im_list_to_blob
 
+#准备RoIDataLayer层top数据, RoIDataLayer::forward->_get_next_minibatch()调用
 def get_minibatch(roidb, num_classes):
     """Given a roidb, construct a minibatch sampled from it."""
     num_images = len(roidb)
     # Sample random scales to use for each image in this batch
     random_scale_inds = npr.randint(0, high=len(cfg.TRAIN.SCALES),
                                     size=num_images)
+    #默认值为BATCH_SIZE = 128
+    #num_images值由cfg.TRAIN.IMS_PER_BATCH = 2 确定
     assert(cfg.TRAIN.BATCH_SIZE % num_images == 0), \
         'num_images ({}) must divide BATCH_SIZE ({})'. \
         format(num_images, cfg.TRAIN.BATCH_SIZE)
+    # 128/2
     rois_per_image = cfg.TRAIN.BATCH_SIZE / num_images
+    # fg比例默认0.25
     fg_rois_per_image = np.round(cfg.TRAIN.FG_FRACTION * rois_per_image)
 
     # Get the input image blob, formatted for caffe
@@ -120,8 +125,8 @@ def _get_image_blob(roidb, scale_inds):
     im_scales = []
     for i in xrange(num_images):
         im = cv2.imread(roidb[i]['image'])
-        if roidb[i]['flipped']:
-            im = im[:, ::-1, :]
+        if roidb[i]['flipped']: #只对在get_training_roidb中进行了flip操作的样本有效(但那里是对整个数据集都做), 
+            im = im[:, ::-1, :] #bboxes已经flipped了, 因此只需要对图像flip
         target_size = cfg.TRAIN.SCALES[scale_inds[i]]
         im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size,
                                         cfg.TRAIN.MAX_SIZE)

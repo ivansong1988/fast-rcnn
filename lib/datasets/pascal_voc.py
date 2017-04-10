@@ -35,6 +35,7 @@ class pascal_voc(datasets.imdb):
         self._image_ext = '.jpg'
         self._image_index = self._load_image_set_index()
         # Default to roidb handler
+        # 在执行imdb对象的roidb()函数时会调用selective_search_roidb()函数为imdb._roidb赋值
         self._roidb_handler = self.selective_search_roidb
 
         # PASCAL specific config options
@@ -121,9 +122,9 @@ class pascal_voc(datasets.imdb):
             return roidb
 
         if int(self._year) == 2007 or self._image_set != 'test':
-            gt_roidb = self.gt_roidb() #
-            ss_roidb = self._load_selective_search_roidb(gt_roidb)
-            roidb = datasets.imdb.merge_roidbs(gt_roidb, ss_roidb)
+            gt_roidb = self.gt_roidb() #调用_load_pascal_annotation逐条读取标注数据，返回由dict(每幅图像)组成的list
+            ss_roidb = self._load_selective_search_roidb(gt_roidb)#读取proposal并与gt计算, 结构与gt_roidb类似
+            roidb = datasets.imdb.merge_roidbs(gt_roidb, ss_roidb)#将gt_roidb与ss_roidb叠放在一起
         else:
             roidb = self._load_selective_search_roidb(None)
         with open(cache_file, 'wb') as fid:
@@ -142,7 +143,7 @@ class pascal_voc(datasets.imdb):
 
         box_list = []
         for i in xrange(raw_data.shape[0]):
-            box_list.append(raw_data[i][:, (1, 0, 3, 2)] - 1)
+            box_list.append(raw_data[i][:, (1, 0, 3, 2)] - 1) #使得坐标从零开始？
 
         return self.create_roidb_from_box_list(box_list, gt_roidb)
 
@@ -227,7 +228,7 @@ class pascal_voc(datasets.imdb):
 
         return {'boxes' : boxes,  #xmin, ymin, xmax, ymax
                 'gt_classes': gt_classes,#标号, 0...,class-1
-                'gt_overlaps' : overlaps,
+                'gt_overlaps' : overlaps, #class 0, 1,..., num_class - 1
                 'flipped' : False} #返回字典
 
     def _write_voc_results_file(self, all_boxes):

@@ -99,16 +99,25 @@ if __name__ == '__main__':
     imdb = get_imdb(args.imdb_name) #返回pascal_voc对象
     print 'Loaded dataset `{:s}` for training'.format(imdb.name) #imdb.name继承自基类class imdb
 
-    #lib/fast_rcnn/train.py
-    #数据通过imdb._roidb_handler完成加载主要的触发函数为
+    # lib/fast_rcnn/train.py
+    # 数据通过imdb._roidb_handler完成加载主要的触发函数为
     # imdb.append_flipped_images() 或者
     # rdl_roidb.prepare_roidb(imdb)
     # 总之, 在get_training_roidb函数中通过调用imdb._roidb_handler()完成数据加载和准备(细节参看lmdb的属性)
+    # 在请求执行imdb.roidb进行数据访问时调用imdb::roidb(), 内部调用imdb._roidb_handler()为imdb._roidb赋值并返回其值
     roidb = get_training_roidb(imdb)
 
+    # lib/fast_rcnn/config.py
+    # path = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))
     output_dir = get_output_dir(imdb, None)
     print 'Output will be saved to `{:s}`'.format(output_dir)
-
+    
+    #训练
+    #lib/fast_rcnn/train.py
     train_net(args.solver, roidb, output_dir,
               pretrained_model=args.pretrained_model,
               max_iters=args.max_iters)
+
+# train model
+#./tools/train_net.py --gpu 0 --solver models/VGG16/solver.prototxt \
+#	--weights data/imagenet_models/VGG16.v2.caffemodel
