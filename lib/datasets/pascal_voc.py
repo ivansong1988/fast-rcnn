@@ -31,7 +31,7 @@ class pascal_voc(datasets.imdb):
                          'cow', 'diningtable', 'dog', 'horse',
                          'motorbike', 'person', 'pottedplant',
                          'sheep', 'sofa', 'train', 'tvmonitor')
-        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))
+        self._class_to_ind = dict(zip(self.classes, xrange(self.num_classes)))#调用imdb::num_classes()返回len(self._classes)
         self._image_ext = '.jpg'
         self._image_index = self._load_image_set_index()
         # Default to roidb handler
@@ -207,7 +207,7 @@ class pascal_voc(datasets.imdb):
 
         boxes = np.zeros((num_objs, 4), dtype=np.uint16)
         gt_classes = np.zeros((num_objs), dtype=np.int32)
-        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32)
+        overlaps = np.zeros((num_objs, self.num_classes), dtype=np.float32) #num_classes包括了background(索引0)
 
         # Load object bounding boxes into a data frame.
         # 这里的处理也要考虑, 万一标注样本已经从零开始了呢,
@@ -219,7 +219,7 @@ class pascal_voc(datasets.imdb):
             x2 = float(get_data_from_tag(obj, 'xmax')) - 1
             y2 = float(get_data_from_tag(obj, 'ymax')) - 1
             cls = self._class_to_ind[
-                    str(get_data_from_tag(obj, "name")).lower().strip()]
+                    str(get_data_from_tag(obj, "name")).lower().strip()] #目标的索引1,...,num_class,
             boxes[ix, :] = [x1, y1, x2, y2]
             gt_classes[ix] = cls
             overlaps[ix, cls] = 1.0 #标记gt属于哪个类别

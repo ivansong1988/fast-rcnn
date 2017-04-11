@@ -31,18 +31,18 @@ def get_minibatch(roidb, num_classes):
     fg_rois_per_image = np.round(cfg.TRAIN.FG_FRACTION * rois_per_image)
 
     # Get the input image blob, formatted for caffe
-    im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)
+    im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)#图像缩放完之后统一存储在blob里, blob的尺寸为max_W*max_H
 
     # Now, build the region of interest and label blobs
-    rois_blob = np.zeros((0, 5), dtype=np.float32)
-    labels_blob = np.zeros((0), dtype=np.float32)
-    bbox_targets_blob = np.zeros((0, 4 * num_classes), dtype=np.float32)
+    rois_blob = np.zeros((0, 5), dtype=np.float32) #宽度为5的空数组[]
+    labels_blob = np.zeros((0), dtype=np.float32)  #[]数组
+    bbox_targets_blob = np.zeros((0, 4 * num_classes), dtype=np.float32) #第二维固定的[]数组
     bbox_loss_blob = np.zeros(bbox_targets_blob.shape, dtype=np.float32)
     # all_overlaps = []
     for im_i in xrange(num_images):
         labels, overlaps, im_rois, bbox_targets, bbox_loss \
             = _sample_rois(roidb[im_i], fg_rois_per_image, rois_per_image,
-                           num_classes)
+                           num_classes) #按比例从roidb(bathsize长度)中提取roi信息
 
         # Add to RoIs blob
         rois = _project_im_rois(im_rois, im_scales[im_i])
@@ -74,7 +74,7 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     examples.
     """
     # label = class RoI has max overlap with
-    labels = roidb['max_classes']
+    labels = roidb['max_classes'] #当labels == 0切overlaps == 0时为background
     overlaps = roidb['max_overlaps']
     rois = roidb['boxes']
 
@@ -84,7 +84,7 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     # foreground RoIs
     fg_rois_per_this_image = np.minimum(fg_rois_per_image, fg_inds.size)
     # Sample foreground regions without replacement
-    if fg_inds.size > 0:
+    if fg_inds.size > 0: #这里是随机选取不重复的fg_rois_per_this_image个
         fg_inds = npr.choice(fg_inds, size=fg_rois_per_this_image,
                              replace=False)
 
@@ -106,17 +106,17 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     # Select sampled values from various arrays:
     labels = labels[keep_inds]
     # Clamp labels for the background RoIs to 0
-    labels[fg_rois_per_this_image:] = 0
+    labels[fg_rois_per_this_image:] = 0 #但是0同样是第一类的类标呀
     overlaps = overlaps[keep_inds]
     rois = rois[keep_inds]
 
     bbox_targets, bbox_loss_weights = \
             _get_bbox_regression_labels(roidb['bbox_targets'][keep_inds, :],
-                                        num_classes)
+                                        num_classes) #背景bbox的bbox_targets全部为零
 
     return labels, overlaps, rois, bbox_targets, bbox_loss_weights
 
-def _get_image_blob(roidb, scale_inds):
+def _get_image_blob(roidb, scale_inds):#scale的索引
     """Builds an input blob from the images in the roidb at the specified
     scales.
     """
@@ -125,18 +125,18 @@ def _get_image_blob(roidb, scale_inds):
     im_scales = []
     for i in xrange(num_images):
         im = cv2.imread(roidb[i]['image'])
-        if roidb[i]['flipped']: #只对在get_training_roidb中进行了flip操作的样本有效(但那里是对整个数据集都做), 
+        if roidb[i]['flipped']: #只对在get_training_roidb中进行了flip操作的样本有效(config.py中默认进行水平镜像, 数据集倍增), 
             im = im[:, ::-1, :] #bboxes已经flipped了, 因此只需要对图像flip
-        target_size = cfg.TRAIN.SCALES[scale_inds[i]]
-        im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size,
-                                        cfg.TRAIN.MAX_SIZE)
-        im_scales.append(im_scale)
+        target_size = cfg.TRAIN.SCALES[scale_inds[i]] #默认是cfg.TRAIN.SCALES = 600
+        im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size, #对于任何数据集都采用相同的PIXEL_MEANS?
+                                        cfg.TRAIN.MAX_SIZE) #lib/utils/blob.py
+        im_scales.append(im_scale)#记录实际的缩放比例, fast-rcnn默认短边到固定尺寸, 但同时也会限制最长边长度
         processed_ims.append(im)
 
     # Create a blob to hold the input images
-    blob = im_list_to_blob(processed_ims)
+    blob = im_list_to_blob(processed_ims) #im_blob, 一个batch图像取max_W,maxH相同尺寸
 
-    return blob, im_scales
+    return blob, im_scales#缩放比例用来处理bbox?
 
 def _project_im_rois(im_rois, im_scale_factor):
     """Project image RoIs into the rescaled training image."""

@@ -91,7 +91,7 @@ class imdb(object):
         """
         raise NotImplementedError
 
-    def append_flipped_images(self):
+    def append_flipped_images(self):#水平方向翻转, x->width - x, y不变
         num_images = self.num_images
         widths = [PIL.Image.open(self.image_path_at(i)).size[0]
                   for i in xrange(num_images)]

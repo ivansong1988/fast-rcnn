@@ -105,7 +105,7 @@ if __name__ == '__main__':
     # rdl_roidb.prepare_roidb(imdb)
     # 总之, 在get_training_roidb函数中通过调用imdb._roidb_handler()完成数据加载和准备(细节参看lmdb的属性)
     # 在请求执行imdb.roidb进行数据访问时调用imdb::roidb(), 内部调用imdb._roidb_handler()为imdb._roidb赋值并返回其值
-    roidb = get_training_roidb(imdb)
+    roidb = get_training_roidb(imdb) #默认数据通过水平flip得到倍增, 对整个数据集bboxes的翻转一次完成
 
     # lib/fast_rcnn/config.py
     # path = osp.abspath(osp.join(__C.ROOT_DIR, 'output', __C.EXP_DIR, imdb.name))

@@ -52,6 +52,7 @@ def add_bbox_regression_targets(roidb):
         max_classes = roidb[im_i]['max_classes']
         roidb[im_i]['bbox_targets'] = \
                 _compute_targets(rois, max_overlaps, max_classes) #对于前景proposal, 记录类别标号, dx, dy ,dw, dh(R-CNN论文定义)
+        ##'bbox_targets'大小与'boxes'相同, 但只有前景bboxes才有值
 
     # Compute values needed for means and stds
     # var(x) = E(x^2) - E(x)^2
@@ -84,6 +85,7 @@ def add_bbox_regression_targets(roidb):
     return means.ravel(), stds.ravel() #返回array
 
 '''准备用于bbox regression的数据：计算前景proposal box与gt的真实变换关系'''
+## 但是坑爹的是
 def _compute_targets(rois, overlaps, labels):
     """Compute bounding-box regression targets for an image."""
     # Ensure ROIs are floats

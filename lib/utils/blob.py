@@ -15,15 +15,15 @@ def im_list_to_blob(ims):
 
     Assumes images are already prepared (means subtracted, BGR order, ...).
     """
-    max_shape = np.array([im.shape for im in ims]).max(axis=0)
+    max_shape = np.array([im.shape for im in ims]).max(axis=0) #对图像集分别求shape每一维的最大值
     num_images = len(ims)
     blob = np.zeros((num_images, max_shape[0], max_shape[1], 3),
                     dtype=np.float32)
     for i in xrange(num_images):
         im = ims[i]
-        blob[i, 0:im.shape[0], 0:im.shape[1], :] = im
+        blob[i, 0:im.shape[0], 0:im.shape[1], :] = im #batch中每个图像大小相同, 如果确定每幅图像的实际尺寸？无所谓吗？直接扔max_W*max_H图像? 有可能, 反正bbox都在有效区域内部
     # Move channels (axis 3) to axis 1
-    # Axis order will become: (batch elem, channel, height, width)
+    # Axis order will become: (batch elem, channel, height, width) #这就是为什么pycaffe脚本里图像需要交换通道的原因
     channel_swap = (0, 3, 1, 2)
     blob = blob.transpose(channel_swap)
     return blob

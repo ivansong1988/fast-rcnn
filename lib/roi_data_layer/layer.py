@@ -106,6 +106,16 @@ class RoIDataLayer(caffe.Layer):
             # this binary vector sepcifies the subset of active targets
             top[4].reshape(1, self._num_classes * 4)
 
+
+    '''
+
+    forward->_get_next_minibatch()->get_minibatch()->_get_image_blob()->prep_im_for_blob()
+                                                                      ->im_list_to_blob()
+                                                   ->_sample_rois()->_get_bbox_regression_labels()   
+                                                   ->_project_im_rois()
+    也就是说每次网络forward时才拉取一批数据进行处理, 而拉取的数据是提前准备好的, 完成操作包括"翻转"(bboxes)\"计算bboxes回归量并类内标准化"
+    在前向阶段则是将固定大小(batch)的roidb数据输入DataLayer的tops中, 完成的操作包括"提取前景/背景proposal"\"图像缩放并放入top blob"\
+    '''
     def forward(self, bottom, top):
         """Get blobs and copy them into this layer's top blob vector."""
         blobs = self._get_next_minibatch()
