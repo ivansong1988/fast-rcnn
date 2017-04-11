@@ -40,15 +40,19 @@ def get_minibatch(roidb, num_classes):
     bbox_loss_blob = np.zeros(bbox_targets_blob.shape, dtype=np.float32)
     # all_overlaps = []
     for im_i in xrange(num_images):
+        #只保留特定数量的前景/背景proposals
+        #每个batch随机从该副图像的proposal中随机选取固定数量
+        #也就是对roidb[im_i]提炼出固定大小、包含特定信息的一个集合
         labels, overlaps, im_rois, bbox_targets, bbox_loss \
             = _sample_rois(roidb[im_i], fg_rois_per_image, rois_per_image,
                            num_classes) #按比例从roidb(bathsize长度)中提取roi信息
 
-        # Add to RoIs blob
-        rois = _project_im_rois(im_rois, im_scales[im_i])
-        batch_ind = im_i * np.ones((rois.shape[0], 1))
-        rois_blob_this_image = np.hstack((batch_ind, rois))
-        rois_blob = np.vstack((rois_blob, rois_blob_this_image))
+        # Add to RoIs blob 
+        # 需要仔细想想
+        rois = _project_im_rois(im_rois, im_scales[im_i])#根据im_scales完成bboxes的缩放
+        batch_ind = im_i * np.ones((rois.shape[0], 1))#同一幅图像的proposals具有相同的索引号(同图像编号)
+        rois_blob_this_image = np.hstack((batch_ind, rois))#记录每个
+        rois_blob = np.vstack((rois_blob, rois_blob_this_image))#rois_blob就是M个rois_blob_this_image
 
         # Add to labels, bbox targets, and bbox loss blobs
         labels_blob = np.hstack((labels_blob, labels))
@@ -74,11 +78,18 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     examples.
     """
     # label = class RoI has max overlap with
-    labels = roidb['max_classes'] #当labels == 0切overlaps == 0时为background
+    labels = roidb['max_classes'] #当labels == 0时为background, 因为类标号为0,1,...,classes (num_class = classes + 1)
     overlaps = roidb['max_overlaps']
     rois = roidb['boxes']
 
     # Select foreground RoIs as those with >= FG_THRESH overlap
+    '''
+    在网路最开始的预处理阶段SolverWrapper.__init__->add_bbox_regression_targets()时
+    对部分样本(前景, ex_inds = np.where(overlaps >= cfg.TRAIN.BBOX_THRESH)[0])计算了bbox回归时需要的偏移量
+    而在网路训练过程中, 实际进行bboxes回归的样本明显是上面所求集合的一个子集, 因此cfg.TRAIN.FG_THRESH参数可能会与cfg.TRAIN.BBOX_THRESH
+    不同. 实际上, 如果BBOX_THRESH<BBOX_THRESH会造成获取的样本里有bbox_targets为空, 并不能有效进行bbox回归的样本, 所以个人感觉要保证
+    BBOX_THRESH>BBOX_THRESH
+    '''
     fg_inds = np.where(overlaps >= cfg.TRAIN.FG_THRESH)[0]
     # Guard against the case when an image has fewer than fg_rois_per_image
     # foreground RoIs
@@ -106,10 +117,13 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     # Select sampled values from various arrays:
     labels = labels[keep_inds]
     # Clamp labels for the background RoIs to 0
-    labels[fg_rois_per_this_image:] = 0 #但是0同样是第一类的类标呀
+    labels[fg_rois_per_this_image:] = 0 #0为背景, 前景为1~classes
     overlaps = overlaps[keep_inds]
     rois = rois[keep_inds]
 
+    #bbox_targets/bbox_loss_weights的shape与roidb['bbox_targets'][keep_inds, :]相同
+    #即同样包含了
+    #但只有cls>0()
     bbox_targets, bbox_loss_weights = \
             _get_bbox_regression_labels(roidb['bbox_targets'][keep_inds, :],
                                         num_classes) #背景bbox的bbox_targets全部为零
@@ -149,7 +163,7 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
 
     This function expands those targets into the 4-of-4*K representation used
     by the network (i.e. only one class has non-zero targets). The loss weights
-    are similarly expanded.
+    are similarly expanded. (1-shot表示法)
 
     Returns:
         bbox_target_data (ndarray): N x 4K blob of regression targets
@@ -158,7 +172,7 @@ def _get_bbox_regression_labels(bbox_target_data, num_classes):
     clss = bbox_target_data[:, 0]
     bbox_targets = np.zeros((clss.size, 4 * num_classes), dtype=np.float32)
     bbox_loss_weights = np.zeros(bbox_targets.shape, dtype=np.float32)
-    inds = np.where(clss > 0)[0]
+    inds = np.where(clss > 0)[0] #只有前景的sample
     for ind in inds:
         cls = clss[ind]
         start = 4 * cls

@@ -85,7 +85,7 @@ def add_bbox_regression_targets(roidb):
     return means.ravel(), stds.ravel() #返回array
 
 '''准备用于bbox regression的数据：计算前景proposal box与gt的真实变换关系'''
-## 但是坑爹的是
+## targets大小与roidb[im_i]['boxes']一样, 但只有前景bboxes才有值
 def _compute_targets(rois, overlaps, labels):
     """Compute bounding-box regression targets for an image."""
     # Ensure ROIs are floats
