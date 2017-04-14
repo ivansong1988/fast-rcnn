@@ -34,14 +34,14 @@ def get_minibatch(roidb, num_classes):
     im_blob, im_scales = _get_image_blob(roidb, random_scale_inds)#图像缩放完之后统一存储在blob里, blob的尺寸为max_W*max_H
 
     # Now, build the region of interest and label blobs
-    rois_blob = np.zeros((0, 5), dtype=np.float32) #宽度为5的空数组[]
+    rois_blob = np.zeros((0, 5), dtype=np.float32) #宽度为5的空数组[], 这里主要用来指明blob的形状
     labels_blob = np.zeros((0), dtype=np.float32)  #[]数组
     bbox_targets_blob = np.zeros((0, 4 * num_classes), dtype=np.float32) #第二维固定的[]数组
     bbox_loss_blob = np.zeros(bbox_targets_blob.shape, dtype=np.float32)
     # all_overlaps = []
     for im_i in xrange(num_images):
         #只保留特定数量的前景/背景proposals
-        #每个batch随机从该副图像的proposal中随机选取固定数量
+        #每个batch随机从该副图像的proposal中随机选取固定数量的前景/背景proposal
         #也就是对roidb[im_i]提炼出固定大小、包含特定信息的一个集合
         labels, overlaps, im_rois, bbox_targets, bbox_loss \
             = _sample_rois(roidb[im_i], fg_rois_per_image, rois_per_image,
@@ -51,8 +51,8 @@ def get_minibatch(roidb, num_classes):
         # 需要仔细想想
         rois = _project_im_rois(im_rois, im_scales[im_i])#根据im_scales完成bboxes的缩放
         batch_ind = im_i * np.ones((rois.shape[0], 1))#同一幅图像的proposals具有相同的索引号(同图像编号)
-        rois_blob_this_image = np.hstack((batch_ind, rois))#记录每个
-        rois_blob = np.vstack((rois_blob, rois_blob_this_image))#rois_blob就是M个rois_blob_this_image
+        rois_blob_this_image = np.hstack((batch_ind, rois))#拼接在一起(水平方向增加), 因此rois_blob_this_image[:,0]就是batch_ind
+        rois_blob = np.vstack((rois_blob, rois_blob_this_image))#rois_blob就是M个rois_blob_this_image拼接在一起(垂直方向增加), 因此可以知道rois_blob里面每一个
 
         # Add to labels, bbox targets, and bbox loss blobs
         labels_blob = np.hstack((labels_blob, labels))
@@ -63,13 +63,13 @@ def get_minibatch(roidb, num_classes):
     # For debug visualizations
     # _vis_minibatch(im_blob, rois_blob, labels_blob, all_overlaps)
 
-    blobs = {'data': im_blob,
-             'rois': rois_blob,
-             'labels': labels_blob}
+    blobs = {'data': im_blob, #图像个数   ->conv1_1
+             'rois': rois_blob, #图像个数*每个图像采样数 ->roi_pool5
+             'labels': labels_blob} #图像个数*每个图像采样数 ->loss_cls
 
     if cfg.TRAIN.BBOX_REG:
-        blobs['bbox_targets'] = bbox_targets_blob
-        blobs['bbox_loss_weights'] = bbox_loss_blob
+        blobs['bbox_targets'] = bbox_targets_blob #图像个数*每个图像采样数  ->loss_bbox
+        blobs['bbox_loss_weights'] = bbox_loss_blob #图像个数*每个图像采样数 ->loss_bbox
 
     return blobs
 
@@ -122,13 +122,14 @@ def _sample_rois(roidb, fg_rois_per_image, rois_per_image, num_classes):
     rois = rois[keep_inds]
 
     #bbox_targets/bbox_loss_weights的shape与roidb['bbox_targets'][keep_inds, :]相同
-    #即同样包含了
-    #但只有cls>0()
+    #即同样包含了前景与背景proposal
+    #但只有前景的bbox_loss_weights/bbox_targets非零
+    #bbox_targets中只包含4维的偏移矢量, 但是被扩展为 4 * num_classes 宽度, 只有其所属类别的4个位置有值
     bbox_targets, bbox_loss_weights = \
             _get_bbox_regression_labels(roidb['bbox_targets'][keep_inds, :],
                                         num_classes) #背景bbox的bbox_targets全部为零
 
-    return labels, overlaps, rois, bbox_targets, bbox_loss_weights
+    return labels, overlaps, rois, bbox_targets, bbox_loss_weights #只包含前景/背景proposal, bbox_loss_weights记录每一维偏移矢量的权重(为'1')
 
 def _get_image_blob(roidb, scale_inds):#scale的索引
     """Builds an input blob from the images in the roidb at the specified
@@ -142,7 +143,7 @@ def _get_image_blob(roidb, scale_inds):#scale的索引
         if roidb[i]['flipped']: #只对在get_training_roidb中进行了flip操作的样本有效(config.py中默认进行水平镜像, 数据集倍增), 
             im = im[:, ::-1, :] #bboxes已经flipped了, 因此只需要对图像flip
         target_size = cfg.TRAIN.SCALES[scale_inds[i]] #默认是cfg.TRAIN.SCALES = 600
-        im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size, #对于任何数据集都采用相同的PIXEL_MEANS?
+        im, im_scale = prep_im_for_blob(im, cfg.PIXEL_MEANS, target_size, #对于任何数据集都采用相同的PIXEL_MEANS?, 完成缩放\减均值\统一存入blob(按max_W,max_H)
                                         cfg.TRAIN.MAX_SIZE) #lib/utils/blob.py
         im_scales.append(im_scale)#记录实际的缩放比例, fast-rcnn默认短边到固定尺寸, 但同时也会限制最长边长度
         processed_ims.append(im)

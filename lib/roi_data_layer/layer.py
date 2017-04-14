@@ -88,7 +88,7 @@ class RoIDataLayer(caffe.Layer):
         # rois blob: holds R regions of interest, each is a 5-tuple
         # (n, x1, y1, x2, y2) specifying an image batch index n and a
         # rectangle (x1, y1, x2, y2)
-        top[1].reshape(1, 5)
+        top[1].reshape(1, 5) #每个proposal: 图像索引+bbox4坐标
 
         # labels blob: R categorical labels in [0, ..., K] for K foreground
         # classes plus background #label是num_class + 1
@@ -100,7 +100,7 @@ class RoIDataLayer(caffe.Layer):
 
             # bbox_targets blob: R bounding-box regression targets with 4
             # targets per class
-            top[3].reshape(1, self._num_classes * 4)
+            top[3].reshape(1, self._num_classes * 4) #只有该类有偏移量不为零
 
             # bbox_loss_weights blob: At most 4 targets per roi are active;
             # this binary vector sepcifies the subset of active targets
@@ -116,7 +116,7 @@ class RoIDataLayer(caffe.Layer):
     也就是说每次网络forward时才拉取一批数据进行处理, 而拉取的数据是提前准备好的, 完成操作包括"翻转"(bboxes)\"计算bboxes回归量并类内标准化"
     在前向阶段则是将固定大小(batch)的roidb数据输入DataLayer的tops中, 完成的操作包括"提取前景/背景proposal"\"图像缩放并放入top blob"\
     '''
-    def forward(self, bottom, top):
+    def forward(self, bottom, top): #结合实际的层去用吧
         """Get blobs and copy them into this layer's top blob vector."""
         blobs = self._get_next_minibatch()
 

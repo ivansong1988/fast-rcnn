@@ -497,7 +497,7 @@ layer {
     decay_mult: 0
   }
   inner_product_param {
-    num_output: 84
+    num_output: 84 #每类4个, 20+1类
     weight_filler {
       type: "gaussian"
       std: 0.001
@@ -508,8 +508,8 @@ layer {
     }
   }
 }
-layer {
-  name: "loss_cls"
+layer { 
+  name: "loss_cls" 
   type: "SoftmaxWithLoss"
   bottom: "cls_score"
   bottom: "labels"
